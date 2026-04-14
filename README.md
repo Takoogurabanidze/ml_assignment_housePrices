@@ -238,18 +238,94 @@ feature-ების რაოდენობის შემცირება
 
 ---
 
-## MLflow Tracking
+
 
 ### MLflow ექსპერიმენტები
-ყველა ექსპერიმენტი დავარეგისტრირე MLflow-ში, სადაც შევინახე:
-- ჰიპერპარამეტრები
-- მეტრიკები
-- მოდელების შედეგები
+ყველა ექსპერიმენტი ინტეგრირებული იყო MLflow tracking სისტემაში.
 
+### ჩატარებული ექპერიმენტები
+ამ ეტაპზე განხორციელდა რამდენიმე რეგრესიული მოდელის ტესტირება, cross-validation-ით შეფასება და hyperparameter tuning.
+
+გამოყენებული იყო 5-fold KFold cross-validation (shuffle=True, random_state=42) და ძირითადი მეტრიკები:
+
+RMSE (Root Mean Squared Error)
+MAE (Mean Absolute Error)
+R² Score
+
+Random Forest Regressor
+
+Random Forest მოდელისთვის ტესტირებული იყო შემდეგი ჰიპერპარამეტრები:
+
+n_estimators: 100, 200, 300
+max_depth: 5, 10, None
+
+მოდელი შეფასდა ყველა კომბინაციაზე cross-validation-ით და შედეგები დარეგისტრირდა MLflow-ში.
+ შედეგი:
+
+საუკეთესო შედეგი მიიღო მოდელმა:
+n_estimators=200, max_depth=None
+მიიღო ერთ-ერთი ყველაზე დაბალი RMSE Random Forest-ებს შორის
+თუმცა მაინც ჩამორჩებოდა XGBoost-ს
+Ridge Regression
+
+Ridge მოდელისთვის ტესტირებული იყო:
+
+alpha: 0.1, 1, 10, 100
+
+შედეგი:
+
+საუკეთესო იყო alpha=100
+მოდელი შედარებით სუსტი აღმოჩნდა (უფრო მაღალი RMSE და დაბალი R²)
+მიუთითებს, რომ მონაცემებში არის არაწრფივი დამოკიდებულებები
+XGBoost Regressor
+
+XGBoost იყო ყველაზე ფართოდ ოპტიმიზირებული მოდელი:
+
+learning_rate: 0.03, 0.05, 0.1
+max_depth: 3, 4, 5
+n_estimators: 200, 300, 400
+დამატებით:
+subsample=0.8
+colsample_bytree=0.8
+ შედეგი:
+
+საუკეთესო კომბინაცია:
+learning_rate=0.05
+max_depth=5
+n_estimators=400
+შედეგები:
+RMSE ≈ 24673 (ყველაზე დაბალი)
+R² ≈ 0.897 (ყველაზე მაღალი)
+სხვა მოდელებს მნიშვნელოვნად აჯობა
 ### ჩაწერილი მეტრიკები
 - RMSE
 - R² score
 - MAE
 
+###Hyperparameter Optimization მიდგომა
+
+ყველა მოდელზე გამოყენებული იყო grid search-ის მსგავსი brute-force მიდგომა:
+
+ყველა კომბინაცია შემოწმდა loop-ებით
+თითოეულ run-ზე შესრულდა:
+cross_validate
+metric logging (RMSE, MAE, R²)
+model fitting
+MLflow logging
+
 ### საუკეთესო მოდელის შედეგები
-საუკეთესო შედეგი აჩვენა XGBoost მოდელმა, რომელმაც მიაღწია ყველაზე დაბალ შეცდომას და საუკეთესო პროგნოზულ უნარს.
+საბოლოოდ შეირჩა XGBoost, რადგან:
+
+აჩვენა ყველაზე დაბალი RMSE (≈ 24.6K)
+ჰქონდა ყველაზე მაღალი R² score (~0.897)
+უკეთ მუშაობდა non-linear ურთიერთობებზე
+Random Forest-ზე ნაკლებ overfitting-ს აჩვენებდა
+Ridge-თან შედარებით ბევრად ძლიერი იყო feature interaction-ების დაჭერაში
+
+###საუკეთესო მოდელის რეგისტრაცია
+
+საბოლოო XGBoost მოდელი:
+
+დარეგისტრირდა MLflow Model Registry-ში
+სახელით: HousePrice_XGBoost
+შეიქმნა versioning (version 2)
