@@ -241,6 +241,7 @@ feature-ების რაოდენობის შემცირება
 
 
 ### MLflow ექსპერიმენტები
+https://dagshub.com/tgura23/ml_assignment_housePrices/experiments
 ყველა ექსპერიმენტი ინტეგრირებული იყო MLflow tracking სისტემაში.
 
 ### ჩატარებული ექპერიმენტები
@@ -314,6 +315,10 @@ model fitting
 MLflow logging
 
 ### საუკეთესო მოდელის შედეგები
+
+<img width="1512" height="217" alt="image" src="https://github.com/user-attachments/assets/9efdd421-b5fa-4a8f-87b6-1c7b989ad2e0" />
+
+
 საბოლოოდ შეირჩა XGBoost, რადგან:
 
 აჩვენა ყველაზე დაბალი RMSE (≈ 24.6K)
