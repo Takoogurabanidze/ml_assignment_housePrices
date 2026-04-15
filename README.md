@@ -140,12 +140,10 @@ noise-ის შემცირება
 ამ ეტაპზე გამოვიყენე რამდენიმე განსხვავებული მიდგომა, რათა შემერჩია ყველაზე ინფორმაციული ცვლადები და შემემცირებინა ზედმეტი ან redundant features.
 
 Correlation Filter
-
 პირველ რიგში გამოვიყენე კორელაციის ანალიზი, რომლის მიზანი იყო ერთმანეთთან ძლიერად დაკავშირებული (highly correlated) ცვლადების აღმოჩენა.
 
-ამოღებულ იქნა ერთმანეთთან ძალიან მაღალი კორელაციის მქონე feature-ები
-მიზანი იყო multicollinearity-ის შემცირება
-Mutual Information / Feature Importance
+ამოვიღე ერთმანეთთან ძალიან მაღალი კორელაციის მქონე feature-ები
+მიზანი იყო რომ შემემცირებინა ისეთი კატეგორიები, რომლებიც იგივნეირ გავლენას ახდენდნენ მიზნობრივ ცვლადზე.
 
 შემდეგ ეტაპზე გამოვიყენე mutual information და tree-based importance:
 
@@ -155,16 +153,14 @@ Mutual Information / Feature Importance
 ამან საშუალება მომცა დამეტოვებინა მხოლოდ ის feature-ები, რომლებიც რეალურად ახდენენ გავლენას ფასზე.
 
 Tree-based Feature Selection (Random Forest)
-
 გამოვიყენე Random Forest მოდელი feature importance-ის დასათვლელად:
 
 მოდელმა დაალაგა ცვლადები მნიშვნელობის მიხედვით
 დავტოვე მხოლოდ ყველაზე ძლიერი feature-ები
-Final Reduction
 
-საბოლოოდ განხორციელდა:
+საბოლოოდ კი დავტოვე 40 ყველაზე მნიშვნელოვანი მონაცემი:
 
-feature-ების რაოდენობის შემცირება
+მიზანი: feature-ების რაოდენობის შემცირება
 ნაკლებად მნიშვნელოვანი ცვლადების მოცილება
 მონაცემის უფრო კომპაქტურ და სტაბილურ ფორმაში გადაყვანა
 
@@ -173,8 +169,7 @@ feature-ების რაოდენობის შემცირება
 ## Training
 
 ### ტესტირებული მოდელები
-- Linear Regression
-- Decision Tree
+- Ridge 
 - Random Forest
 - XGBoost
 
@@ -182,30 +177,26 @@ feature-ების რაოდენობის შემცირება
 მოდელებისთვის გამოვიყენე სხვადასხვა ჰიპერპარამეტრების კომბინაციები (depth, number of trees, learning rate და სხვა) საუკეთესო შედეგის მისაღებად.
 
 ### საბოლოო მოდელის შერჩევის დასაბუთება
-საბოლოოდ ავარჩიე XGBoost, რადგან:
-- ჰქონდა საუკეთესო სიზუსტე
-- უკეთესად აბალანსებდა bias-ს და variance-ს
-- ნაკლებად იყო მიდრეკილი overfitting-ისკენ
+საბოლოოდ შეირჩა XGBoost, რადგან:
+
+აჩვენა ყველაზე დაბალი RMSE (≈ 24.6K)
+ჰქონდა ყველაზე მაღალი R² score (~0.897)
+უკეთ მუშაობდა non-linear ურთიერთობებზე
+Random Forest-ზე ნაკლებ overfitting-ს აჩვენებდა
+Ridge-თან შედარებით ბევრად ძლიერი იყო feature interaction-ების დაჭერაში
 
 ---
 
 
 
-### MLflow ექსპერიმენტები
-https://dagshub.com/tgura23/ml_assignment_housePrices/experiments
-ყველა ექსპერიმენტი ინტეგრირებული იყო MLflow tracking სისტემაში.
 
 ### ჩატარებული ექპერიმენტები
+
 ამ ეტაპზე განხორციელდა რამდენიმე რეგრესიული მოდელის ტესტირება, cross-validation-ით შეფასება და hyperparameter tuning.
+გამოყენებული იყო 5-fold KFold cross-validation (shuffle=True, random_state=42) 
 
-გამოყენებული იყო 5-fold KFold cross-validation (shuffle=True, random_state=42) და ძირითადი მეტრიკები:
 
-RMSE (Root Mean Squared Error)
-MAE (Mean Absolute Error)
-R² Score
-
-Random Forest Regressor
-
+####Random Forest Regressor
 Random Forest მოდელისთვის ტესტირებული იყო შემდეგი ჰიპერპარამეტრები:
 
 n_estimators: 100, 200, 300
@@ -218,18 +209,20 @@ max_depth: 5, 10, None
 n_estimators=200, max_depth=None
 მიიღო ერთ-ერთი ყველაზე დაბალი RMSE Random Forest-ებს შორის
 თუმცა მაინც ჩამორჩებოდა XGBoost-ს
-Ridge Regression
 
+
+####Ridge Regression
 Ridge მოდელისთვის ტესტირებული იყო:
 
 alpha: 0.1, 1, 10, 100
 
 შედეგი:
-
 საუკეთესო იყო alpha=100
 მოდელი შედარებით სუსტი აღმოჩნდა (უფრო მაღალი RMSE და დაბალი R²)
 მიუთითებს, რომ მონაცემებში არის არაწრფივი დამოკიდებულებები
-XGBoost Regressor
+
+
+####XGBoost Regressor
 
 XGBoost იყო ყველაზე ფართოდ ოპტიმიზირებული მოდელი:
 
@@ -249,10 +242,12 @@ n_estimators=400
 RMSE ≈ 24673 (ყველაზე დაბალი)
 R² ≈ 0.897 (ყველაზე მაღალი)
 სხვა მოდელებს მნიშვნელოვნად აჯობა
+
 ### ჩაწერილი მეტრიკები
-- RMSE
-- R² score
-- MAE
+RMSE (Root Mean Squared Error)
+MAE (Mean Absolute Error)
+R² Score
+
 
 ###Hyperparameter Optimization მიდგომა
 
@@ -270,18 +265,15 @@ MLflow logging
 <img width="1512" height="217" alt="image" src="https://github.com/user-attachments/assets/9efdd421-b5fa-4a8f-87b6-1c7b989ad2e0" />
 
 
-საბოლოოდ შეირჩა XGBoost, რადგან:
 
-აჩვენა ყველაზე დაბალი RMSE (≈ 24.6K)
-ჰქონდა ყველაზე მაღალი R² score (~0.897)
-უკეთ მუშაობდა non-linear ურთიერთობებზე
-Random Forest-ზე ნაკლებ overfitting-ს აჩვენებდა
-Ridge-თან შედარებით ბევრად ძლიერი იყო feature interaction-ების დაჭერაში
+
+### MLflow ექსპერიმენტები
+https://dagshub.com/tgura23/ml_assignment_housePrices/experiments
+ყველა ექსპერიმენტი ინტეგრირებული იყო MLflow tracking სისტემაში.
 
 ###საუკეთესო მოდელის რეგისტრაცია
 
 საბოლოო XGBoost მოდელი:
-
 დარეგისტრირდა MLflow Model Registry-ში
 სახელით: HousePrice_XGBoost
-შეიქმნა versioning (version 2)
+
