@@ -169,112 +169,183 @@ Tree-based Feature Selection (Random Forest)
 ## Training
 
 ### ტესტირებული მოდელები
-- Ridge 
-- Random Forest
-- XGBoost
-
-### Hyperparameter ოპტიმიზაცია
-მოდელებისთვის გამოვიყენე სხვადასხვა ჰიპერპარამეტრების კომბინაციები (depth, number of trees, learning rate და სხვა) საუკეთესო შედეგის მისაღებად.
-
-### საბოლოო მოდელის შერჩევის დასაბუთება
-საბოლოოდ შეირჩა XGBoost, რადგან:
-
-
-_აჩვენა ყველაზე დაბალი RMSE (≈ 24.6K)
-_ჰქონდა ყველაზე მაღალი R² score (~0.897)
-_უკეთ მუშაობდა non-linear ურთიერთობებზე
-_Random Forest-ზე ნაკლებ overfitting-ს აჩვენებდა
-_Ridge-თან შედარებით ბევრად ძლიერი იყო feature interaction-ების დაჭერაში
+- Ridge Regression
+- Random Forest Regressor
+- XGBoost Regressor
 
 ---
 
+### Hyperparameter ოპტიმიზაცია
+გამოყენებული იყო grid search-ის მსგავსი brute-force მიდგომა, სადაც თითოეული მოდელისთვის ხელით განისაზღვრა ჰიპერპარამეტრების სივრცე და ყველა შესაძლო კომბინაცია შემოწმდა  loop-ების გამოყენებით.
+
+თითოეულ მოდელზე პროცესი იყო შემდეგი:
+- ყველა ჰიპერპარამეტრის კომბინაციაზე გაიშვა training
+- გამოყენებული იყო 5-fold cross-validation, რაც უზრუნველყოფდა შედეგების სტაბილურობას
+- თითოეულ run-ზე ხდებოდა:
+  - `cross_validate` ფუნქციის გაშვება
+  - მეტრიკების დათვლა (RMSE, MAE, R²)
+  - მოდელის საბოლოო fit სრული train მონაცემზე
+  - შედეგების და პარამეტრების ლოგირება MLflow-ში
+
+---
+
+### მიღებული შედეგების ანალიზი
+
+ჰიპერპარამეტრების ტესტირების შედეგად გამოიკვეთა, რომ მოდელების შედეგიანობა მნიშვნელოვნად დამოკიდებული იყო მათი სიღრმისა და კომპლექსურობის კონტროლზე.
+
+#### Random Forest
+Random Forest-ის შემთხვევაში:
+- `max_depth=None` იძლეოდა უკეთეს შედეგებს, რაც ნიშნავს, რომ ღრმა ხეები უკეთ აღწერდა მონაცემს
+- `n_estimators=200` აღმოჩნდა ოპტიმალური — მეტი ხეების დამატებამ აღარ მოიტანა მნიშვნელოვანი გაუმჯობესება
+
+თუმცა, მიუხედავად ამისა:
+- მოდელი მაინც ჩამორჩებოდა XGBoost-ს
+- სავარაუდოდ, Random Forest ვერ ახერხებდა რთული non-linear ურთიერთობების ეფექტურად აგრეგაციას
+
+#### Ridge Regression
+Ridge-ის შემთხვევაში:
+- საუკეთესო შედეგი დაფიქსირდა `alpha=100`-ზე, რაც ნიშნავს ძლიერ რეგულარიზაციას
+- ეს მიუთითებს, რომ მოდელი ცდილობდა overfitting-ის შემცირებას
+
+მაგრამ:
+- მაღალი RMSE და დაბალი R² აჩვენებს, რომ მოდელი ვერ იჭერდა მონაცემებში არსებულ არაწრფივ დამოკიდებულებებს
+- შესაბამისად, მისი bias იყო მაღალი
+
+#### XGBoost
+XGBoost-ის შემთხვევაში საუკეთესო შედეგი მიღწეულ იქნა შემდეგი პარამეტრებით:
+- `learning_rate=0.05`
+- `max_depth=5`
+- `n_estimators=400`
+- `subsample=0.8`
+- `colsample_bytree=0.8`
+
+ამ კომბინაციამ უზრუნველყო:
+- დაბალი RMSE (~24673)
+- მაღალი R² (~0.897)
+
+---
+
+### რატომ აჯობა XGBoost-მა
+
+შედეგების მიხედვით შეიძლება გაკეთდეს რამდენიმე მნიშვნელოვანი დასკვნა:
+
+1. **Learning rate და n_estimators ოპტიმალური არჩევა**  
+   შედარებით დაბალი `learning_rate=0.05` და მაღალი `n_estimators=400` საშუალებას აძლევდა მოდელს ეტაპობრივად ესწავლა მონაცემის სტრუქტურა და თავიდან აეცილებინა overfitting
+
+2. **სიღრმის ოპტიმალური არჩევა**  
+   `max_depth=5` აღმოჩნდა კარგი ბალანსი:
+   - საკმარისად ღრმა, რომ დაეჭირა feature interaction-ები  
+   - საკმარისად შეზღუდული, რომ არ გადაესწავლა noise
 
 
+3. **უპირატესობა ამ მოდელის**  
+   განსხვავებით Random Forest-ისგან, XGBoost იყენებს boosting-ს:
+   - ყოველი ახალი ხე ასწორებს წინა შეცდომებს  
+   - ეს იძლევა უფრო ზუსტ approximation-ს რთული ფუნქციებისთვის
 
-### ჩატარებული ექპერიმენტები
+---
 
-ამ ეტაპზე განხორციელდა რამდენიმე რეგრესიული მოდელის ტესტირება, cross-validation-ით შეფასება და hyperparameter tuning.
-გამოყენებული იყო 5-fold KFold cross-validation (shuffle=True, random_state=42) 
+---
 
+### საბოლოო მოდელის შერჩევის დასაბუთება
 
-###Random Forest Regressor
-Random Forest მოდელისთვის ტესტირებული იყო შემდეგი ჰიპერპარამეტრები:
+საბოლოოდ შეირჩა XGBoost, რადგან:
 
-n_estimators: 100, 200, 300
-max_depth: 5, 10, None
+- აჩვენა ყველაზე დაბალი RMSE (~24.6K)
+- ჰქონდა ყველაზე მაღალი R² score (~0.897)
+- უკეთ მუშაობდა non-linear დამოკიდებულებებზე
+- Random Forest-ზე ნაკლებ overfitting-ს აჩვენებდა
+- Ridge-თან შედარებით უკეთ იჭერდა feature interaction-ებს
 
-მოდელი შეფასდა ყველა კომბინაციაზე cross-validation-ით და შედეგები დარეგისტრირდა MLflow-ში.
- შედეგი:
+---
 
-საუკეთესო შედეგი მიიღო მოდელმა:
-n_estimators=200, max_depth=None
-მიიღო ერთ-ერთი ყველაზე დაბალი RMSE Random Forest-ებს შორის
-თუმცა მაინც ჩამორჩებოდა XGBoost-ს
+## ჩატარებული ექსპერიმენტები
 
+ამ ეტაპზე განხორციელდა რამდენიმე რეგრესიული მოდელის:
+- ტესტირება
+- cross-validation შეფასება
+- hyperparameter tuning
 
-###Ridge Regression
-Ridge მოდელისთვის ტესტირებული იყო:
+გამოყენებული იყო:
+- 5-fold KFold cross-validation  
+  (shuffle=True, random_state=42)
 
-alpha: 0.1, 1, 10, 100
+---
+
+### Random Forest Regressor
+
+ჰიპერპარამეტრები:
+- n_estimators: 100, 200, 300
+- max_depth: 5, 10, None
 
 შედეგი:
-საუკეთესო იყო alpha=100
-მოდელი შედარებით სუსტი აღმოჩნდა (უფრო მაღალი RMSE და დაბალი R²)
-მიუთითებს, რომ მონაცემებში არის არაწრფივი დამოკიდებულებები
+- საუკეთესო კომბინაცია:
+  n_estimators=200, max_depth=None
+- მიიღო დაბალი RMSE, თუმცა ჩამორჩებოდა XGBoost-ს
 
+---
 
-###XGBoost Regressor
+### Ridge Regression
 
-XGBoost იყო ყველაზე ფართოდ ოპტიმიზირებული მოდელი:
+ჰიპერპარამეტრები:
+- alpha: 0.1, 1, 10, 100
 
-learning_rate: 0.03, 0.05, 0.1
-max_depth: 3, 4, 5
-n_estimators: 200, 300, 400
+შედეგი:
+- საუკეთესო: alpha=100
+- მოდელი შედარებით სუსტი აღმოჩნდა:
+  - მაღალი RMSE
+  - დაბალი R²
+- მიუთითებს არაწრფივ დამოკიდებულებებზე მონაცემებში
+
+---
+
+### XGBoost Regressor
+
+ჰიპერპარამეტრები:
+- learning_rate: 0.03, 0.05, 0.1
+- max_depth: 3, 4, 5
+- n_estimators: 200, 300, 400
+
 დამატებით:
-subsample=0.8
-colsample_bytree=0.8
- შედეგი:
+- subsample = 0.8
+- colsample_bytree = 0.8
 
 საუკეთესო კომბინაცია:
-learning_rate=0.05
-max_depth=5
-n_estimators=400
+- learning_rate = 0.05
+- max_depth = 5
+- n_estimators = 400
+
 შედეგები:
-RMSE ≈ 24673 (ყველაზე დაბალი)
-R² ≈ 0.897 (ყველაზე მაღალი)
-სხვა მოდელებს მნიშვნელოვნად აჯობა
+- RMSE ≈ 24673 (ყველაზე დაბალი)
+- R² ≈ 0.897 (ყველაზე მაღალი)
+- მნიშვნელოვნად აჯობა სხვა მოდელებს
+
+---
 
 ### ჩაწერილი მეტრიკები
-RMSE (Root Mean Squared Error)
-MAE (Mean Absolute Error)
-R² Score
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R² Score
 
+---
 
-###Hyperparameter Optimization მიდგომა
-
-ყველა მოდელზე გამოყენებული იყო grid search-ის მსგავსი brute-force მიდგომა:
-
-ყველა კომბინაცია შემოწმდა loop-ებით
-თითოეულ run-ზე შესრულდა:
-cross_validate
-metric logging (RMSE, MAE, R²)
-model fitting
-MLflow logging
 
 ### საუკეთესო მოდელის შედეგები
 
 <img width="1512" height="217" alt="image" src="https://github.com/user-attachments/assets/9efdd421-b5fa-4a8f-87b6-1c7b989ad2e0" />
 
-
-
+---
 
 ### MLflow ექსპერიმენტები
 https://dagshub.com/tgura23/ml_assignment_housePrices/experiments
+
 ყველა ექსპერიმენტი ინტეგრირებული იყო MLflow tracking სისტემაში.
 
-###საუკეთესო მოდელის რეგისტრაცია
+---
 
-საბოლოო XGBoost მოდელი:
-დარეგისტრირდა MLflow Model Registry-ში
-სახელით: HousePrice_XGBoost
+### საუკეთესო მოდელის რეგისტრაცია
 
+საბოლოო მოდელი:
+- XGBoost Regressor
+- დარეგისტრირდა MLflow Model Registry-ში
+- სახელით: HousePrice_XGBoost
